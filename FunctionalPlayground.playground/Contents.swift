@@ -22,30 +22,30 @@ enum EmojiError: Error {
     case 😩(String)
 }
 
-// Functional Result functions
+// Functional Result Helpers
 
 func curry<A, B, C, D>(_ function: @escaping (A, B, C) -> D) -> (A) -> (B) -> (C) -> D {
     return { (a: A) -> (B) -> (C) -> D in { (b: B) -> (C) -> D in { (c: C) -> D in function(a, b, c) } } }
 }
 
-func applyResult<A, B>(of result: Result<A, EmojiError>, to action: (A) -> B) -> Result<(result: A, action: B), EmojiError> {
+func applyResult<A, B>(of result: Result<A, EmojiError>, to partial: (A) -> B) -> Result<(result: A, action: B), EmojiError> {
     return result.flatMap { value in
-        .success((value, action(value)))
+        .success((value, partial(value)))
     }
 }
 
-func applyResult<A, B, C>(of fn: @escaping (C) -> Result<A, EmojiError>) -> (_ input: C, _ action: (A) -> B) -> Result<(result: A, action: B), EmojiError> {
-    return { input, action in
+func applyResult<A, B, C>(of fn: @escaping (C) -> Result<A, EmojiError>) -> (_ input: C, _ partial: (A) -> B) -> Result<(result: A, action: B), EmojiError> {
+    return { input, partial in
         return fn(input).flatMap { value in
-            .success((value, action(value)))
+            .success((value, partial(value)))
         }
     }
 }
 
-func applyResult<A, B, C>(of fn: @escaping (C) -> Result<A, EmojiError>) -> (_ input: C, _ action: (A) -> B) -> Result<B, EmojiError> {
-    return { input, action in
+func applyResult<A, B, C>(of fn: @escaping (C) -> Result<A, EmojiError>) -> (_ input: C, _ partial: (A) -> B) -> Result<B, EmojiError> {
+    return { input, partial in
         return fn(input).flatMap { value in
-            .success(action(value))
+            .success(partial(value))
         }
     }
 }
@@ -118,14 +118,6 @@ struct TweetDetails {
     var expressedMessage: String {
         let sentimentDescription = sentiment.isPositive ? "positive" : "negative"
         return "\(user.name) said \(tweet.message) which has a \(sentimentDescription) statement"
-    }
-}
-
-func createTweetDetails(user: User) -> (_ tweet: Tweet) -> (_ sentiment: TweetSentiment) -> TweetDetails {
-    return { tweet in
-        return { sentiment in
-            return TweetDetails(user: user, tweet: tweet, sentiment: sentiment)
-        }
     }
 }
 
