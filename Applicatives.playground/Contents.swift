@@ -26,19 +26,15 @@ enum EmojiError: Error {
 
 // Functional Result Helpers
 
-func curry<A, B, C, D>(_ function: @escaping (A, B, C) -> D) -> (A) -> (B) -> (C) -> D {
-    return { (a: A) -> (B) -> (C) -> D in { (b: B) -> (C) -> D in { (c: C) -> D in function(a, b, c) } } }
-}
-
 func pure<A>(_ x: A) -> Result<A, EmojiError> {
     return .success(x)
 }
 
-precedencegroup Applicative {
+precedencegroup LeftAssociativity {
      associativity: left
 }
 
-infix operator <*> : Applicative
+infix operator <*> : LeftAssociativity
 
 func <*><A, B>(f: Result<(A) -> B, EmojiError>, x: Result<A, EmojiError>) -> Result<B, EmojiError> {
     switch (f, x) {
@@ -92,35 +88,6 @@ struct TweetSentiment {
     let tweetId: String
 }
 
-// Repository
-
-class TwitterRepository {
-    
-    func getTweetDetails(for userId: String) -> Result<TweetDetails, EmojiError> {
-        let tweetDetails = curry(TweetDetails.init)
-        return pure(tweetDetails) <*> getUser() <*> pure(getLatestTweet) <*> pure(getTweetSentiment)
-    }
-    
-    func getUser() -> Result<User, EmojiError> {
-        return .success(User(id: .none, name: "Tyrone"))
-    }
-    
-    func getLatestTweet(for user: User?) -> Result<Tweet, EmojiError> {
-        guard let userId = user?.id else {
-            return .failure(.😩("User not found"))
-        }
-        return .success(Tweet(id: "123", message: "Wahoo", userId: userId))
-    }
-    
-    func getTweetSentiment(for tweet: Tweet?) -> Result<TweetSentiment, EmojiError> {
-        guard let tweetId = tweet?.id  else {
-            return .failure(.😩("Tweet not found"))
-        }
-        return .success(TweetSentiment(id: "123", isPositive: true, tweetId: tweetId))
-    }
-    
-}
-
 // Data model
 
 struct TweetDetails {
@@ -140,6 +107,48 @@ struct TweetDetails {
     }
 }
 
+let createTweetDetails = {
+    user in {
+        tweet in {
+            sentiment in
+            TweetDetails(
+                user: user,
+                tweet: tweet,
+                sentiment: sentiment
+            )
+        }
+    }
+}
+
+// Repository
+
+class TwitterRepository {
+    
+    func getTweetDetails(for userId: String) -> Result<TweetDetails, EmojiError> {
+        return pure(createTweetDetails)
+            <*> getUser()
+            <*> pure(getLatestTweet)
+            <*> pure(getTweetSentiment)
+    }
+    
+    func getUser() -> Result<User, EmojiError> {
+        return .success(User(id: "234", name: "Tyrone"))
+    }
+    
+    func getLatestTweet(for user: User?) -> Result<Tweet, EmojiError> {
+        guard let userId = user?.id else { return .failure(.😩("User not found")) }
+        return .success(Tweet(id: "123", message: "Wahoo", userId: userId))
+    }
+    
+    func getTweetSentiment(for tweet: Tweet?) -> Result<TweetSentiment, EmojiError> {
+        guard let tweetId = tweet?.id  else { return .failure(.😩("Tweet not found")) }
+        return .success(TweetSentiment(id: "123", isPositive: true, tweetId: tweetId))
+    }
+    
+}
+
+
+
 // Usage
 
 let repo = TwitterRepository()
@@ -152,3 +161,4 @@ case let .failure(error):
     case let .😩(value): assertionFailure(value)
     }
 }
+
